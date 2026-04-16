@@ -170,17 +170,44 @@ def main() -> None:
         else:
             seed = None
 
-    default_players = "\n".join(str(i) for i in range(1, int(player_count) + 1))
-    player_input = st.text_area(
-        "Enter player names (one per line)",
-        value=default_players,
-        height=220,
-        help="If you keep numbers, player IDs like 1..8 are used.",
-    )
+    count = int(player_count)
+    if "player_names" not in st.session_state:
+        st.session_state.player_names = [f"Player {i + 1}" for i in range(count)]
+
+    # Keep the names list exactly equal to selected player count.
+    current_names = st.session_state.player_names
+    if len(current_names) < count:
+        current_names.extend(
+            [f"Player {i + 1}" for i in range(len(current_names), count)]
+        )
+    elif len(current_names) > count:
+        current_names = current_names[:count]
+    st.session_state.player_names = current_names
+
+    st.subheader("Player Names")
+    st.caption("Enter exactly one name per player.")
+    cols = st.columns(2)
+    entered_names: List[str] = []
+    for i in range(count):
+        col = cols[i % 2]
+        with col:
+            entered_name = st.text_input(
+                f"Player {i + 1}",
+                value=st.session_state.player_names[i],
+                key=f"player_name_{i}",
+            ).strip()
+            entered_names.append(entered_name)
+    st.session_state.player_names = entered_names
 
     if st.button("Generate Schedule", type="primary"):
-        players = parse_players(player_input, int(player_count))
+        players = entered_names
 
+        if any(not name for name in players):
+            st.error("Please enter all player names before generating schedule.")
+            return
+        if len(set(players)) != len(players):
+            st.error("Player names must be unique.")
+            return
         if len(players) < 4:
             st.error("Need at least 4 players.")
             return
